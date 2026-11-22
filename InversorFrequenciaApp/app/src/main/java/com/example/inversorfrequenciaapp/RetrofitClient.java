@@ -1,20 +1,20 @@
 package com.example.inversorfrequenciaapp;
 
 import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.scalars.ScalarsConverterFactory;
 
-public class RetrofitClient {
+public final class RetrofitClient {
+    private RetrofitClient() { }
 
-    public static final String IP_SERVIDOR = "http://192.168.1.69:8080/";
-    private static Retrofit retrofit = null;
+    public static InversorApi criarApi(String enderecoBase) {
+        String base = enderecoBase.endsWith("/")
+                ? enderecoBase : enderecoBase + "/";
 
-    public static InversorApi getInversorApi(){
-        if (retrofit == null){
-            retrofit = new Retrofit.Builder()
-                    .baseUrl(IP_SERVIDOR)
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .build();
-        }
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(base)
+                .addConverterFactory(ScalarsConverterFactory.create())
+                .build();
+
         return retrofit.create(InversorApi.class);
     }
 }
