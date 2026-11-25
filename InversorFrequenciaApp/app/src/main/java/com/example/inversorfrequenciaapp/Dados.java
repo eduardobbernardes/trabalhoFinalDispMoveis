@@ -1,4 +1,4 @@
-package com.example.inversorfrequenciaapp;
+    package com.example.inversorfrequenciaapp;
 
 /** Converte a resposta de texto do inversor nos oito campos do protocolo. */
 public class Dados {

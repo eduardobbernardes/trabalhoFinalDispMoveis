@@ -12,6 +12,8 @@ import android.widget.CheckBox;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.content.pm.PackageManager;
+import android.os.Build;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -23,17 +25,20 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final int REQUEST_REDE_LOCAL = 1001;
     private final String[] nomesAlvos = {
             "Simulador deste notebook", "Laboratório — máquina 1 (.60)",
             "Laboratório — máquina 2 (.61)", "Laboratório — máquina 4 (.63)",
             "Laboratório — máquina 5 (.64)"
     };
     private final String[] enderecos = {
-            "http://192.168.0.95:8080/",
+            "http://192.168.1.67:8080/",
+            //"http://localhost:8080/",
             "http://192.168.20.60/api/ihm/",
             "http://192.168.20.61/api/ihm/",
             "http://192.168.20.63/api/ihm/",
-            "http://192.168.20.64/api/ihm/"
+            "http://192.168.20.64/api/ihm/",
     };
     private final int[] idsLeds = {
             R.id.ledHz, R.id.ledA, R.id.ledV, R.id.ledRun,
@@ -87,14 +92,14 @@ public class MainActivity extends AppCompatActivity {
                                        int position, long id) {
                 alvoSelecionado = position;
                 dadosAtuais = null;
-                carregarLeitura();
+                verificaPermissaoRedeLocal();
             }
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) { }
         });
 
-        findViewById(R.id.botaoAtualizar).setOnClickListener(v -> carregarLeitura());
+        findViewById(R.id.botaoAtualizar).setOnClickListener(v -> verificaPermissaoRedeLocal());
 
         sliderPot.addOnChangeListener((slider, valor, doUsuario) -> {
             if (doUsuario) valorPot.setText("POTENCIÔMETRO: " + Math.round(valor));
@@ -155,10 +160,12 @@ public class MainActivity extends AppCompatActivity {
             @Override public void onResponse(Call<String> call, Response<String> response) {
                 if (!response.isSuccessful() || response.body() == null) {
                     status.setText("Falha HTTP " + response.code());
+                    System.out.println(response.code());
                     return;
                 }
                 try {
                     dadosAtuais = new Dados(response.body());
+                    System.out.println(response.body());
                     mostrarDados(dadosAtuais);
                     status.setText("Conectado — " + nomesAlvos[alvoSelecionado]);
                 } catch (RuntimeException erro) {
@@ -167,14 +174,15 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override public void onFailure(Call<String> call, Throwable erro) {
-                status.setText("Sem resposta. Confira rede e máquina selecionada.");
+                //status.setText("Sem resposta. Confira rede e máquina selecionada.");
+                status.setText("Sem resposta: " + erro);
             }
         });
     }
 
     private void mostrarDados(Dados dados) {
         atualizandoTela = true;
-        visor.setText(dados.getDisplay().isEmpty() ? "(vazio)" : dados.getDisplay());
+        visor.setText(dados.getDisplay().isEmpty() ? "(Vazio)" : dados.getDisplay());
         sliderPot.setValue(dados.getPotenciometro());
         valorPot.setText("POTENCIÔMETRO: " + dados.getPotenciometro());
         sliderEntradaAnalogica.setValue(dados.getEntradaAnalogica());
@@ -256,6 +264,40 @@ public class MainActivity extends AppCompatActivity {
                 mensagem("Não foi possível enviar. Confira a conexão.");
             }
         });
+    }
+
+    public void verificaPermissaoRedeLocal(){
+
+        if (Build.VERSION.SDK_INT >= 37 &&
+                checkSelfPermission("android.permission.ACCESS_LOCAL_NETWORK")
+                        != PackageManager.PERMISSION_GRANTED){
+            requestPermissions(new String[]{"android.permission.ACCESS_LOCAL_NETWORK"}, REQUEST_REDE_LOCAL);
+        } else {
+            carregarLeitura();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            String[] permissions,
+            int[] grantResults) {
+
+        super.onRequestPermissionsResult(
+                requestCode, permissions, grantResults
+        );
+
+        if (requestCode == REQUEST_REDE_LOCAL) {
+
+            if (grantResults.length > 0 &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                carregarLeitura();
+
+            } else {
+                status.setText("Permissão de rede local negada");
+            }
+        }
     }
 
     private void mensagem(String texto) {
